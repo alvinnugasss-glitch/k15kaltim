@@ -48,7 +48,7 @@ st.markdown("""
         margin-top: 10px;
         margin-bottom: 5px;
         font-size: 14px;
-        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+        border-bottom: 1px solid rgba(128,128,128,0.2);
         padding-bottom: 3px;
     }
     div.row-widget.stRadio > div {
@@ -94,7 +94,8 @@ if 'proker_list' not in st.session_state:
     st.session_state['proker_list'] = [
         {
             "id": 1, "Nama Agenda": "Penerimaan OJT", "Status": "Selesai", "Progres": 100, "PIC": "Divisi Internal",
-            "Waktu Pelaksanaan": "2026-08-28 s.d. 2026-08-30", "Rentang Waktu Persiapan": "Agustus (Minggu ke-1 s.d ke-3)",
+            "Waktu Pelaksanaan": [{"Tanggal Mulai": str(date(2026, 8, 28)), "Tanggal Selesai": str(date(2026, 8, 30))}],
+            "Rentang Waktu Persiapan": "Agustus (Minggu ke-1 s.d ke-3)",
             "Ketua": "Billy", "Sekretaris": "Bila", "Bendahara": "Faisal",
             "Divisi": [{"Nama Divisi": "Perlengkapan", "PIC Divisi": "Joko", "Anggota Panitia": "Doni, Budi", "Jobdesk": "Mempersiapkan lokasi dan alat"}],
             "Tautan": [{"Keterangan": "Proposal", "URL": "https://drive.google.com/..."}],
@@ -291,7 +292,8 @@ elif menu == "Progres Program Kerja":
             data_aktif = {
                 "Divisi": [{"Nama Divisi": "", "PIC Divisi": "", "Anggota Panitia": "", "Jobdesk": ""}],
                 "Tautan": [{"Keterangan": "", "URL": ""}],
-                "Tahapan": [{"Tahapan Kegiatan": "", "B_Mulai": "Agustus", "M_Mulai": "W1", "B_Selesai": "Agustus", "M_Selesai": "W1"}]
+                "Tahapan": [{"Tahapan Kegiatan": "", "B_Mulai": "Agustus", "M_Mulai": "W1", "B_Selesai": "Agustus", "M_Selesai": "W1"}],
+                "Waktu Pelaksanaan": [{"Tanggal Mulai": str(date.today()), "Tanggal Selesai": str(date.today())}]
             } if is_new else next(p for p in st.session_state['proker_list'] if p["Nama Agenda"] == pilihan)
             
             with st.form("form_proker"):
@@ -313,21 +315,27 @@ elif menu == "Progres Program Kerja":
                 
                 colB.metric("Otomatis Progres (%)", f"{prog}%")
                 
-                st.markdown("**2. Waktu Pelaksanaan & Persiapan (Tanggal Spesifik & Dropdown)**")
-                colW1, colW2 = st.columns(2)
+                st.markdown("**2. Waktu Pelaksanaan Acara (Bisa Berulang / Lebih dari Satu Jadwal)**")
+                # Konversi data waktu pelaksanaan lama (string) ke format list of dict jika berbentuk string
+                raw_waktu = data_aktif.get("Waktu Pelaksanaan", [])
+                if isinstance(raw_waktu, str):
+                    raw_waktu = [{"Tanggal Mulai": str(date.today()), "Tanggal Selesai": str(date.today())}]
                 
-                # Revisi 2: Input tanggal spesifik (bisa memilih rentang tanggal atau tanggal banyak)
-                st.markdown("Pilih Tanggal Spesifik Pelaksanaan Acara:")
-                col_date1, col_date2 = colW1.columns(2)
-                tgl_mulai_acara = col_date1.date_input("Tanggal Mulai", value=date.today())
-                tgl_selesai_acara = col_date2.date_input("Tanggal Selesai", value=date.today())
-                waktu_pelaksanaan = f"{tgl_mulai_acara.strftime('%d %b %Y')} s.d. {tgl_selesai_acara.strftime('%d %b %Y')}" if tgl_mulai_acara != tgl_selesai_acara else tgl_mulai_acara.strftime('%d %b %Y')
+                df_waktu_pelaksanaan = st.data_editor(
+                    pd.DataFrame(raw_waktu),
+                    num_rows="dynamic",
+                    use_container_width=True,
+                    column_config={
+                        "Tanggal Mulai": st.column_config.DateColumn("Tanggal Mulai", format="YYYY-MM-DD"),
+                        "Tanggal Selesai": st.column_config.DateColumn("Tanggal Selesai", format="YYYY-MM-DD")
+                    }
+                )
 
+                colW1, colW2 = st.columns(2)
                 default_persiapan = data_aktif.get("Rentang Waktu Persiapan", WAKTU_LIST[0])
                 idx_persiapan = WAKTU_LIST.index(default_persiapan) if default_persiapan in WAKTU_LIST else 0
-                rentang_persiapan = colW2.selectbox("Rentang Waktu Persiapan Acara", WAKTU_LIST, index=idx_persiapan)
-                
-                warna_chart = colW1.color_picker("Pilih Warna Label Timeline", data_aktif.get("Color", "#3498DB"))
+                rentang_persiapan = colW1.selectbox("Rentang Waktu Persiapan Acara", WAKTU_LIST, index=idx_persiapan)
+                warna_chart = colW2.color_picker("Pilih Warna Label Timeline", data_aktif.get("Color", "#3498DB"))
                 
                 st.markdown("**3. Tahapan Kegiatan (Untuk Time Schedule)**")
                 df_tahapan = st.data_editor(
@@ -382,10 +390,11 @@ elif menu == "Progres Program Kerja":
                         clean_divisi = [d for d in df_divisi.to_dict('records') if str(d.get("Nama Divisi", "")).strip() != ""]
                         clean_tautan = [t for t in df_tautan.to_dict('records') if str(t.get("Keterangan", "")).strip() != ""]
                         clean_tahapan = [th for th in df_tahapan.to_dict('records') if str(th.get("Tahapan Kegiatan", "")).strip() != ""]
+                        clean_waktu = [w for w in df_waktu_pelaksanaan.to_dict('records') if str(w.get("Tanggal Mulai", "")).strip() != ""]
                         
                         new_data = {
                             "Nama Agenda": nama_agenda, "Status": status, "Progres": prog, "PIC": pic,
-                            "Waktu Pelaksanaan": waktu_pelaksanaan, "Rentang Waktu Persiapan": rentang_persiapan,
+                            "Waktu Pelaksanaan": clean_waktu, "Rentang Waktu Persiapan": rentang_persiapan,
                             "Ketua": ketua, "Sekretaris": sekretaris, "Bendahara": bendahara, 
                             "Divisi": clean_divisi, "Tautan": clean_tautan, "Tahapan": clean_tahapan, 
                             "Evaluasi": evaluasi, "Color": warna_chart
@@ -434,18 +443,31 @@ elif menu == "Progres Program Kerja":
             
             t1, t2, t3 = st.tabs(["Detail Utama", "Struktur & Jobdesk", "Arsip & Evaluasi"])
             
-            # Revisi 1: Merapikan tampilan Detail Utama agar lebih bersih dibaca
             with t1:
+                # Format waktu pelaksanaan yang bisa berulang lebih dari satu tanggal
+                waktu_pelaksanaan_raw = row.get('Waktu Pelaksanaan', '-')
+                waktu_str_list = []
+                if isinstance(waktu_pelaksanaan_raw, list):
+                    for w in waktu_pelaksanaan_raw:
+                        tgl_m = w.get('Tanggal Mulai', '')
+                        tgl_s = w.get('Tanggal Selesai', '')
+                        if tgl_m and tgl_s and tgl_m != tgl_s:
+                            waktu_str_list.append(f"{tgl_m} s.d. {tgl_s}")
+                        elif tgl_m:
+                            waktu_str_list.append(tgl_m)
+                    waktu_display = "<br>&nbsp;&nbsp;&nbsp;&nbsp;• " + "<br>&nbsp;&nbsp;&nbsp;&nbsp;• ".join(waktu_str_list) if waktu_str_list else "-"
+                else:
+                    waktu_display = f"<br>&nbsp;&nbsp;&nbsp;&nbsp;• {waktu_pelaksanaan_raw}"
+
                 st.markdown(f"""
                 <div style='background-color: var(--secondary-background-color); padding: 15px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2);'>
                     <p style='margin: 5px 0;'><b>📌 Penanggung Jawab (PIC):</b> {row.get('PIC', '-')}</p>
                     <p style='margin: 5px 0;'><b>⚡ Status:</b> {row.get('Status', '-')}</p>
-                    <p style='margin: 5px 0;'><b>📅 Waktu Pelaksanaan:</b> {row.get('Waktu Pelaksanaan', '-')}</p>
+                    <p style='margin: 5px 0;'><b>📅 Waktu Pelaksanaan (Berulang / Jadwal):</b> {waktu_display}</p>
                     <p style='margin: 5px 0;'><b>⏳ Rentang Waktu Persiapan:</b> {row.get('Rentang Waktu Persiapan', '-')}</p>
                 </div>
                 """, unsafe_allow_html=True)
             
-            # Revisi 1: Merapikan tampilan Struktur & Jobdesk agar lebih rapi, terstruktur, dan elegan
             with t2:
                 st.markdown(f"""
                 <div style='background-color: var(--secondary-background-color); padding: 15px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2); margin-bottom: 15px;'>
