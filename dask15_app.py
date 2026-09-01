@@ -94,8 +94,7 @@ if 'proker_list' not in st.session_state:
     st.session_state['proker_list'] = [
         {
             "id": 1, "Nama Agenda": "Penerimaan OJT", "Status": "Selesai", "Progres": 100, "PIC": "Divisi Internal",
-            "Waktu Pelaksanaan": [{"Tanggal Mulai": str(date(2026, 8, 28)), "Tanggal Selesai": str(date(2026, 8, 30))}],
-            "Rentang Waktu Persiapan": "Agustus (Minggu ke-1 s.d ke-3)",
+            "Waktu Pelaksanaan": ["2026-08-28", "2026-08-29", "2026-08-30"], "Rentang Waktu Persiapan": "Agustus (Minggu ke-1 s.d ke-3)",
             "Ketua": "Billy", "Sekretaris": "Bila", "Bendahara": "Faisal",
             "Divisi": [{"Nama Divisi": "Perlengkapan", "PIC Divisi": "Joko", "Anggota Panitia": "Doni, Budi", "Jobdesk": "Mempersiapkan lokasi dan alat"}],
             "Tautan": [{"Keterangan": "Proposal", "URL": "https://drive.google.com/..."}],
@@ -293,7 +292,7 @@ elif menu == "Progres Program Kerja":
                 "Divisi": [{"Nama Divisi": "", "PIC Divisi": "", "Anggota Panitia": "", "Jobdesk": ""}],
                 "Tautan": [{"Keterangan": "", "URL": ""}],
                 "Tahapan": [{"Tahapan Kegiatan": "", "B_Mulai": "Agustus", "M_Mulai": "W1", "B_Selesai": "Agustus", "M_Selesai": "W1"}],
-                "Waktu Pelaksanaan": [{"Tanggal Mulai": str(date.today()), "Tanggal Selesai": str(date.today())}]
+                "Waktu Pelaksanaan": [date.today()]
             } if is_new else next(p for p in st.session_state['proker_list'] if p["Nama Agenda"] == pilihan)
             
             with st.form("form_proker"):
@@ -315,20 +314,17 @@ elif menu == "Progres Program Kerja":
                 
                 colB.metric("Otomatis Progres (%)", f"{prog}%")
                 
-                st.markdown("**2. Waktu Pelaksanaan Acara (Bisa Berulang / Lebih dari Satu Jadwal)**")
-                # Konversi data waktu pelaksanaan lama (string) ke format list of dict jika berbentuk string
-                raw_waktu = data_aktif.get("Waktu Pelaksanaan", [])
-                if isinstance(raw_waktu, str):
-                    raw_waktu = [{"Tanggal Mulai": str(date.today()), "Tanggal Selesai": str(date.today())}]
+                st.markdown("**2. Waktu Pelaksanaan (Bisa Pilih Banyak Tanggal Berulang)**")
+                existing_dates = data_aktif.get("Waktu Pelaksanaan", [date.today()])
+                if not isinstance(existing_dates, list):
+                    existing_dates = [date.today()]
                 
-                df_waktu_pelaksanaan = st.data_editor(
-                    pd.DataFrame(raw_waktu),
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    column_config={
-                        "Tanggal Mulai": st.column_config.DateColumn("Tanggal Mulai", format="YYYY-MM-DD"),
-                        "Tanggal Selesai": st.column_config.DateColumn("Tanggal Selesai", format="YYYY-MM-DD")
-                    }
+                # Menggunakan st.data_editor untuk input tanggal berulang secara praktis
+                df_dates_input = pd.DataFrame({"Tanggal Pelaksanaan": existing_dates})
+                df_dates_edited = st.data_editor(
+                    df_dates_input,
+                    column_config={"Tanggal Pelaksanaan": st.column_config.DateColumn("Tanggal Pelaksanaan", format="YYYY-MM-DD", required=True)},
+                    num_rows="dynamic", use_container_width=True, key=f"dates_edit_{pilihan}"
                 )
 
                 colW1, colW2 = st.columns(2)
@@ -390,11 +386,15 @@ elif menu == "Progres Program Kerja":
                         clean_divisi = [d for d in df_divisi.to_dict('records') if str(d.get("Nama Divisi", "")).strip() != ""]
                         clean_tautan = [t for t in df_tautan.to_dict('records') if str(t.get("Keterangan", "")).strip() != ""]
                         clean_tahapan = [th for th in df_tahapan.to_dict('records') if str(th.get("Tahapan Kegiatan", "")).strip() != ""]
-                        clean_waktu = [w for w in df_waktu_pelaksanaan.to_dict('records') if str(w.get("Tanggal Mulai", "")).strip() != ""]
+                        
+                        # Mengambil list tanggal yang diinput secara dinamis
+                        raw_dates = df_dates_edited["Tanggal Pelaksanaan"].dropna().tolist()
+                        clean_dates = [str(d) for d in raw_dates if str(d).strip() != ""]
                         
                         new_data = {
                             "Nama Agenda": nama_agenda, "Status": status, "Progres": prog, "PIC": pic,
-                            "Waktu Pelaksanaan": clean_waktu, "Rentang Waktu Persiapan": rentang_persiapan,
+                            "Waktu Pelaksanaan": clean_dates if clean_dates else [str(date.today())], 
+                            "Rentang Waktu Persiapan": rentang_persiapan,
                             "Ketua": ketua, "Sekretaris": sekretaris, "Bendahara": bendahara, 
                             "Divisi": clean_divisi, "Tautan": clean_tautan, "Tahapan": clean_tahapan, 
                             "Evaluasi": evaluasi, "Color": warna_chart
@@ -444,26 +444,18 @@ elif menu == "Progres Program Kerja":
             t1, t2, t3 = st.tabs(["Detail Utama", "Struktur & Jobdesk", "Arsip & Evaluasi"])
             
             with t1:
-                # Format waktu pelaksanaan yang bisa berulang lebih dari satu tanggal
-                waktu_pelaksanaan_raw = row.get('Waktu Pelaksanaan', '-')
-                waktu_str_list = []
-                if isinstance(waktu_pelaksanaan_raw, list):
-                    for w in waktu_pelaksanaan_raw:
-                        tgl_m = w.get('Tanggal Mulai', '')
-                        tgl_s = w.get('Tanggal Selesai', '')
-                        if tgl_m and tgl_s and tgl_m != tgl_s:
-                            waktu_str_list.append(f"{tgl_m} s.d. {tgl_s}")
-                        elif tgl_m:
-                            waktu_str_list.append(tgl_m)
-                    waktu_display = "<br>&nbsp;&nbsp;&nbsp;&nbsp;• " + "<br>&nbsp;&nbsp;&nbsp;&nbsp;• ".join(waktu_str_list) if waktu_str_list else "-"
+                # Menampilkan daftar tanggal pelaksanaan (bisa lebih dari satu/berulang tanpa tanggal selesai)
+                waktu_pelaksanaan_val = row.get('Waktu Pelaksanaan', '-')
+                if isinstance(waktu_pelaksanaan_val, list):
+                    waktu_str = ", ".join([str(d) for d in waktu_pelaksanaan_val])
                 else:
-                    waktu_display = f"<br>&nbsp;&nbsp;&nbsp;&nbsp;• {waktu_pelaksanaan_raw}"
+                    waktu_str = str(waktu_pelaksanaan_val)
 
                 st.markdown(f"""
                 <div style='background-color: var(--secondary-background-color); padding: 15px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2);'>
                     <p style='margin: 5px 0;'><b>📌 Penanggung Jawab (PIC):</b> {row.get('PIC', '-')}</p>
                     <p style='margin: 5px 0;'><b>⚡ Status:</b> {row.get('Status', '-')}</p>
-                    <p style='margin: 5px 0;'><b>📅 Waktu Pelaksanaan (Berulang / Jadwal):</b> {waktu_display}</p>
+                    <p style='margin: 5px 0;'><b>📅 Tanggal Pelaksanaan (Berulang):</b> {waktu_str}</p>
                     <p style='margin: 5px 0;'><b>⏳ Rentang Waktu Persiapan:</b> {row.get('Rentang Waktu Persiapan', '-')}</p>
                 </div>
                 """, unsafe_allow_html=True)
