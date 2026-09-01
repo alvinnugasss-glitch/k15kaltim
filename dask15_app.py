@@ -94,8 +94,8 @@ if 'proker_list' not in st.session_state:
         {
             "id": 1, "Nama Agenda": "Penerimaan OJT", "Status": "Selesai", "Progres": 100, "PIC": "Divisi Internal",
             "Waktu Pelaksanaan": "Agustus (Minggu ke-4)", "Rentang Waktu Persiapan": "Agustus (Minggu ke-1 s.d ke-3)",
-            "Ketua": "Budi", "Sekretaris": "Ani", "Bendahara": "Citra",
-            "Divisi": [{"Nama Divisi": "Perlengkapan", "Nama Panitia": "Joko, Doni", "Jobdesk": "Mempersiapkan lokasi dan alat"}],
+            "Ketua": "Billy", "Sekretaris": "Bila", "Bendahara": "Faisal",
+            "Divisi": [{"Nama Divisi": "Perlengkapan", "PIC Divisi": "Joko", "Anggota Panitia": "Doni, Budi", "Jobdesk": "Mempersiapkan lokasi dan alat"}],
             "Tautan": [{"Keterangan": "Proposal", "URL": "https://drive.google.com/..."}],
             "Tahapan": [{"Tahapan Kegiatan": "Pembentukan panitia", "B_Mulai": "Agustus", "M_Mulai": "W1", "B_Selesai": "Agustus", "M_Selesai": "W1"}],
             "Evaluasi": "Lancar", "Color": "#E74C3C"
@@ -288,7 +288,7 @@ elif menu == "Progres Program Kerja":
             
             is_new = pilihan == "-- Tambah Proker Baru --"
             data_aktif = {
-                "Divisi": [{"Nama Divisi": "", "Nama Panitia": "", "Jobdesk": ""}],
+                "Divisi": [{"Nama Divisi": "", "PIC Divisi": "", "Anggota Panitia": "", "Jobdesk": ""}],
                 "Tautan": [{"Keterangan": "", "URL": ""}],
                 "Tahapan": [{"Tahapan Kegiatan": "", "B_Mulai": "Agustus", "M_Mulai": "W1", "B_Selesai": "Agustus", "M_Selesai": "W1"}]
             } if is_new else next(p for p in st.session_state['proker_list'] if p["Nama Agenda"] == pilihan)
@@ -299,12 +299,10 @@ elif menu == "Progres Program Kerja":
                 nama_agenda = colA.text_input("Nama Agenda", data_aktif.get("Nama Agenda", ""))
                 pic = colB.text_input("Penanggung Jawab (PIC)", data_aktif.get("PIC", ""))
                 
-                # Revisi 3: Status diubah menjadi Persiapan, Berjalan, Selesai
                 status_options = ["Persiapan", "Berjalan", "Selesai"]
                 default_status_idx = status_options.index(data_aktif.get("Status", "Persiapan")) if data_aktif.get("Status") in status_options else 0
                 status = colA.selectbox("Status", status_options, index=default_status_idx)
                 
-                # Revisi 1: Progres otomatis berdasarkan status (tidak bisa diatur manual oleh admin)
                 if status == "Persiapan":
                     prog = 25
                 elif status == "Berjalan":
@@ -316,7 +314,6 @@ elif menu == "Progres Program Kerja":
                 
                 st.markdown("**2. Waktu Pelaksanaan & Persiapan (Dropdown)**")
                 colW1, colW2 = st.columns(2)
-                # Revisi 2: Dropdown untuk waktu pelaksanaan dan rentang persiapan
                 default_waktu = data_aktif.get("Waktu Pelaksanaan", WAKTU_LIST[0])
                 idx_waktu = WAKTU_LIST.index(default_waktu) if default_waktu in WAKTU_LIST else 0
                 waktu_pelaksanaan = colW1.selectbox("Waktu Pelaksanaan Acara", WAKTU_LIST, index=idx_waktu)
@@ -341,18 +338,20 @@ elif menu == "Progres Program Kerja":
 
                 st.markdown("**4. Struktur Inti & Divisi**")
                 colD1, colD2, colD3 = st.columns(3)
-                ketua = colD1.text_input("Ketua Pelaksana", data_aktif.get("Ketua", ""))
-                sekretaris = colD2.text_input("Sekretaris", data_aktif.get("Sekretaris", ""))
-                bendahara = colD3.text_input("Bendahara", data_aktif.get("Bendahara", ""))
+                # Revisi 2: Mengubah nilai default ketua, sekretaris, bendahara menjadi Billy, Bila, Faisal
+                ketua = colD1.text_input("Ketua Pelaksana", data_aktif.get("Ketua", "Billy"))
+                sekretaris = colD2.text_input("Sekretaris", data_aktif.get("Sekretaris", "Bila"))
+                bendahara = colD3.text_input("Bendahara", data_aktif.get("Bendahara", "Faisal"))
                 
-                # Revisi 4: Ditambahkan kolom Nama Panitia pada tabel divisi
-                st.markdown("Daftar Divisi dan Anggota Panitia:")
+                # Revisi 1: Ditambahkan kolom Nama PIC Divisi & Anggota Panitia secara terstruktur
+                st.markdown("Daftar Divisi, PIC, Anggota Panitia, dan Jobdesk:")
                 df_divisi = st.data_editor(
                     pd.DataFrame(data_aktif.get("Divisi", [])), 
                     num_rows="dynamic", use_container_width=True,
                     column_config={
                         "Nama Divisi": st.column_config.TextColumn("Nama Divisi"),
-                        "Nama Panitia": st.column_config.TextColumn("Nama Panitia / Anggota"),
+                        "PIC Divisi": st.column_config.TextColumn("Nama PIC Divisi"),
+                        "Anggota Panitia": st.column_config.TextColumn("Daftar Anggota Panitia"),
                         "Jobdesk": st.column_config.TextColumn("Jobdesk")
                     }
                 )
@@ -439,13 +438,14 @@ elif menu == "Progres Program Kerja":
             
             with t2:
                 st.markdown(f"**Ketua Pelaksana:** {row.get('Ketua', '-')} | **Sekretaris:** {row.get('Sekretaris', '-')} | **Bendahara:** {row.get('Bendahara', '-')}")
-                st.markdown("**📋 Daftar Divisi & Anggota Panitia:**")
+                st.markdown("**📋 Daftar Divisi, PIC, & Anggota Panitia:**")
                 if row.get("Divisi"):
                     for div in row["Divisi"]:
                         nama_div = div.get('Nama Divisi', '')
-                        nama_panitia = div.get('Nama Panitia', '-')
+                        pic_div = div.get('PIC Divisi', '-')
+                        anggota = div.get('Anggota Panitia', '-')
                         job = div.get('Jobdesk', '')
-                        st.markdown(f"- **{nama_div}** (Panitia: *{nama_panitia}*): {job}")
+                        st.markdown(f"- **{nama_div}** — **PIC:** *{pic_div}* | **Anggota:** *{anggota}* | **Jobdesk:** {job}")
                 else:
                     st.caption("Belum ada data divisi.")
                     
