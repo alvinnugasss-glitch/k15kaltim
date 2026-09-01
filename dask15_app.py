@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import base64
 import copy
+from datetime import date
 from streamlit_gsheets import GSheetsConnection
 
 # 1. Konfigurasi Halaman & Tema Warna
@@ -93,7 +94,7 @@ if 'proker_list' not in st.session_state:
     st.session_state['proker_list'] = [
         {
             "id": 1, "Nama Agenda": "Penerimaan OJT", "Status": "Selesai", "Progres": 100, "PIC": "Divisi Internal",
-            "Waktu Pelaksanaan": "Agustus (Minggu ke-4)", "Rentang Waktu Persiapan": "Agustus (Minggu ke-1 s.d ke-3)",
+            "Waktu Pelaksanaan": "2026-08-28 s.d. 2026-08-30", "Rentang Waktu Persiapan": "Agustus (Minggu ke-1 s.d ke-3)",
             "Ketua": "Billy", "Sekretaris": "Bila", "Bendahara": "Faisal",
             "Divisi": [{"Nama Divisi": "Perlengkapan", "PIC Divisi": "Joko", "Anggota Panitia": "Doni, Budi", "Jobdesk": "Mempersiapkan lokasi dan alat"}],
             "Tautan": [{"Keterangan": "Proposal", "URL": "https://drive.google.com/..."}],
@@ -312,12 +313,16 @@ elif menu == "Progres Program Kerja":
                 
                 colB.metric("Otomatis Progres (%)", f"{prog}%")
                 
-                st.markdown("**2. Waktu Pelaksanaan & Persiapan (Dropdown)**")
+                st.markdown("**2. Waktu Pelaksanaan & Persiapan (Tanggal Spesifik & Dropdown)**")
                 colW1, colW2 = st.columns(2)
-                default_waktu = data_aktif.get("Waktu Pelaksanaan", WAKTU_LIST[0])
-                idx_waktu = WAKTU_LIST.index(default_waktu) if default_waktu in WAKTU_LIST else 0
-                waktu_pelaksanaan = colW1.selectbox("Waktu Pelaksanaan Acara", WAKTU_LIST, index=idx_waktu)
                 
+                # Revisi 2: Input tanggal spesifik (bisa memilih rentang tanggal atau tanggal banyak)
+                st.markdown("Pilih Tanggal Spesifik Pelaksanaan Acara:")
+                col_date1, col_date2 = colW1.columns(2)
+                tgl_mulai_acara = col_date1.date_input("Tanggal Mulai", value=date.today())
+                tgl_selesai_acara = col_date2.date_input("Tanggal Selesai", value=date.today())
+                waktu_pelaksanaan = f"{tgl_mulai_acara.strftime('%d %b %Y')} s.d. {tgl_selesai_acara.strftime('%d %b %Y')}" if tgl_mulai_acara != tgl_selesai_acara else tgl_mulai_acara.strftime('%d %b %Y')
+
                 default_persiapan = data_aktif.get("Rentang Waktu Persiapan", WAKTU_LIST[0])
                 idx_persiapan = WAKTU_LIST.index(default_persiapan) if default_persiapan in WAKTU_LIST else 0
                 rentang_persiapan = colW2.selectbox("Rentang Waktu Persiapan Acara", WAKTU_LIST, index=idx_persiapan)
@@ -338,12 +343,10 @@ elif menu == "Progres Program Kerja":
 
                 st.markdown("**4. Struktur Inti & Divisi**")
                 colD1, colD2, colD3 = st.columns(3)
-                # Revisi 2: Mengubah nilai default ketua, sekretaris, bendahara menjadi Billy, Bila, Faisal
                 ketua = colD1.text_input("Ketua Pelaksana", data_aktif.get("Ketua", "Billy"))
                 sekretaris = colD2.text_input("Sekretaris", data_aktif.get("Sekretaris", "Bila"))
                 bendahara = colD3.text_input("Bendahara", data_aktif.get("Bendahara", "Faisal"))
                 
-                # Revisi 1: Ditambahkan kolom Nama PIC Divisi & Anggota Panitia secara terstruktur
                 st.markdown("Daftar Divisi, PIC, Anggota Panitia, dan Jobdesk:")
                 df_divisi = st.data_editor(
                     pd.DataFrame(data_aktif.get("Divisi", [])), 
@@ -430,22 +433,44 @@ elif menu == "Progres Program Kerja":
             st.progress(row['Progres'])
             
             t1, t2, t3 = st.tabs(["Detail Utama", "Struktur & Jobdesk", "Arsip & Evaluasi"])
-            with t1:
-                st.markdown(f"**PIC:** {row.get('PIC', '-')}")
-                st.markdown(f"**Status:** {row.get('Status', '-')}")
-                st.markdown(f"**Waktu Pelaksanaan:** {row.get('Waktu Pelaksanaan', '-')}")
-                st.markdown(f"**Rentang Waktu Persiapan Acara:** {row.get('Rentang Waktu Persiapan', '-')}")
             
+            # Revisi 1: Merapikan tampilan Detail Utama agar lebih bersih dibaca
+            with t1:
+                st.markdown(f"""
+                <div style='background-color: var(--secondary-background-color); padding: 15px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2);'>
+                    <p style='margin: 5px 0;'><b>📌 Penanggung Jawab (PIC):</b> {row.get('PIC', '-')}</p>
+                    <p style='margin: 5px 0;'><b>⚡ Status:</b> {row.get('Status', '-')}</p>
+                    <p style='margin: 5px 0;'><b>📅 Waktu Pelaksanaan:</b> {row.get('Waktu Pelaksanaan', '-')}</p>
+                    <p style='margin: 5px 0;'><b>⏳ Rentang Waktu Persiapan:</b> {row.get('Rentang Waktu Persiapan', '-')}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Revisi 1: Merapikan tampilan Struktur & Jobdesk agar lebih rapi, terstruktur, dan elegan
             with t2:
-                st.markdown(f"**Ketua Pelaksana:** {row.get('Ketua', '-')} | **Sekretaris:** {row.get('Sekretaris', '-')} | **Bendahara:** {row.get('Bendahara', '-')}")
-                st.markdown("**📋 Daftar Divisi, PIC, & Anggota Panitia:**")
+                st.markdown(f"""
+                <div style='background-color: var(--secondary-background-color); padding: 15px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2); margin-bottom: 15px;'>
+                    <h4 style='margin-top: 0; color: #3b82f6;'>👔 Badan Pengurus Inti</h4>
+                    <p style='margin: 4px 0;'>• <b>Ketua Pelaksana:</b> {row.get('Ketua', '-')}</p>
+                    <p style='margin: 4px 0;'>• <b>Sekretaris:</b> {row.get('Sekretaris', '-')}</p>
+                    <p style='margin: 4px 0;'>• <b>Bendahara:</b> {row.get('Bendahara', '-')}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.markdown("#### 📋 Pembagian Divisi & Anggota Panitia")
                 if row.get("Divisi"):
                     for div in row["Divisi"]:
                         nama_div = div.get('Nama Divisi', '')
                         pic_div = div.get('PIC Divisi', '-')
                         anggota = div.get('Anggota Panitia', '-')
-                        job = div.get('Jobdesk', '')
-                        st.markdown(f"- **{nama_div}** — **PIC:** *{pic_div}* | **Anggota:** *{anggota}* | **Jobdesk:** {job}")
+                        job = div.get('Jobdesk', '-')
+                        st.markdown(f"""
+                        <div style='background-color: var(--secondary-background-color); padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-bottom: 8px;'>
+                            <b>📌 {nama_div}</b><br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;• <b>PIC Divisi:</b> {pic_div}<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;• <b>Anggota:</b> {anggota}<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;• <b>Jobdesk:</b> {job}
+                        </div>
+                        """, unsafe_allow_html=True)
                 else:
                     st.caption("Belum ada data divisi.")
                     
