@@ -6,25 +6,13 @@ import copy
 # 1. Konfigurasi Halaman & Tema Warna
 st.set_page_config(page_title="Dashboard OJT Kaltim K15", layout="wide", page_icon="⚓")
 
-# Custom CSS untuk card shape, metrik, dan card progres mahasiswa
+# Custom CSS yang dioptimalkan agar responsif dan kompatibel dengan Light & Dark Mode Streamlit
 st.markdown("""
     <style>
-    .stApp { background-color: #F8FAFC; }
-    h1, h2, h3 { color: #0F172A; }
-    .stProgress .st-bo { background-color: #EAB308; }
-    div[data-testid="stSidebar"] { background-color: #1E3A8A; }
-    div[data-testid="stSidebar"] * { color: white !important; }
-    div.row-widget.stRadio > div {
-        flex-direction: row;
-        justify-content: center;
-        background-color: #ffffff;
-        padding: 10px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
+    /* Menggunakan variabel warna bawaan Streamlit agar otomatis beradaptasi dengan Light & Dark Mode */
     .metric-card {
-        background-color: #ffffff;
-        border: 1px solid #E2E8F0;
+        background-color: var(--secondary-background-color);
+        border: 1px solid rgba(128, 128, 128, 0.2);
         border-left: 5px solid #1E3A8A;
         padding: 20px;
         border-radius: 8px;
@@ -33,31 +21,42 @@ st.markdown("""
     }
     .metric-title {
         font-size: 14px;
-        color: #64748B;
+        color: var(--text-color);
+        opacity: 0.8;
         font-weight: 600;
         margin-bottom: 5px;
     }
     .metric-value {
         font-size: 24px;
-        color: #0F172A;
+        color: var(--text-color);
         font-weight: 700;
     }
     .mhs-card {
-        background-color: #ffffff;
-        border: 1px solid #CBD5E1;
+        background-color: var(--secondary-background-color);
+        border: 1px solid rgba(128, 128, 128, 0.2);
         border-radius: 10px;
         padding: 20px;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
         margin-bottom: 20px;
+        color: var(--text-color);
     }
     .progress-section-title {
         font-weight: 700;
-        color: #1E3A8A;
+        color: #3b82f6;
         margin-top: 10px;
         margin-bottom: 5px;
         font-size: 14px;
-        border-bottom: 1px solid #E2E8F0;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
         padding-bottom: 3px;
+    }
+    /* Mempercantik menu navigasi horizontal agar selaras di kedua mode */
+    div.row-widget.stRadio > div {
+        flex-direction: row;
+        justify-content: center;
+        background-color: var(--secondary-background-color);
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -72,7 +71,6 @@ if 'students' not in st.session_state:
             "id": 1, "Nama": "Raden Mas Alvin Sastrowardhana", "Asal Domisili": "Samarinda", 
             "Program Studi": "Teknik Perancangan dan Konstruksi Kapal", "Perusahaan": "PT Dumas Surabaya", 
             "Foto": "https://ui-avatars.com/api/?name=Alvin&background=EAB308&color=fff&size=200",
-            # Menggunakan struktur data dictionary/list yang lebih rapi untuk admin editor
             "Logbook": [{"Minggu": "Week 1", "Status": "Selesai"}, {"Minggu": "Week 2", "Status": "Selesai"}, {"Minggu": "Week 3", "Status": "Selesai"}, {"Minggu": "Week 4", "Status": "Belum"}, {"Minggu": "Week 5", "Status": "Belum"}],
             "Laporan": [{"Bab/Progres": "Selesai Bab 1"}, {"Bab/Progres": "On Progress Bab 2"}, {"Bab/Progres": "On Progress Bab 3"}],
             "TugasAkhir": "Sedang mempersiapkan penelitian mengenai stabilitas dan olah gerak hopper barge. Apabila tidak kendala topik ini akan saya gunakan.\n\nNote: Mulai OJT lebih awal pada 28 Juli 2026."
@@ -163,11 +161,11 @@ def render_time_schedule():
                 val = row[col]
                 
                 if col in ["Program Kerja", "Tahapan Kegiatan"]:
-                    styles_df.at[idx, col] = f'background-color: {proker_color}20; color: #0F172A; font-weight: 600; border-bottom: 1px solid #eaedf2;'
+                    styles_df.at[idx, col] = f'background-color: {proker_color}20; font-weight: 600; border-bottom: 1px solid rgba(128,128,128,0.2);'
                 elif isinstance(val, str) and val.startswith("#"):
                     styles_df.at[idx, col] = f'background-color: {val}; color: {val}; border-radius: 4px;'
                 else:
-                    styles_df.at[idx, col] = f'background-color: #ffffff; border-bottom: 1px solid #eaedf2;'
+                    styles_df.at[idx, col] = f'border-bottom: 1px solid rgba(128,128,128,0.2);'
         
         df_schedule = df_schedule.drop(columns=["_Raw_PK", "_Color"])
         styles_df = styles_df.drop(columns=["_Raw_PK", "_Color"])
@@ -257,7 +255,6 @@ elif menu == "Daftar Mahasiswa OJT":
                 st.markdown("---")
                 st.markdown("**Perbarui Progres Akademik Mahasiswa (Praktis via Tabel)**")
                 
-                # Revisi 2: Input menggunakan st.data_editor agar lebih rapi, terstruktur, dan praktis
                 st.markdown("📅 **Logbook (Minggu & Status)**")
                 df_logbook_edit = st.data_editor(
                     pd.DataFrame(mhs_data.get("Logbook", [])),
@@ -289,21 +286,19 @@ elif menu == "Daftar Mahasiswa OJT":
                     st.success("Data berhasil diperbarui!")
                     st.rerun()
 
-    # Tampilan Grid Profil Mahasiswa dengan Tampilan Progres yang Disederhanakan & Rapi
     cols = st.columns(3)
     for i, mhs in enumerate(st.session_state['students']):
         with cols[i % 3]: 
             st.markdown(f"""
                 <div class="mhs-card">
                     <img src="{mhs['Foto']}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;">
-                    <h3 style="margin: 0; font-size: 18px; color: #0F172A;">{mhs['Nama']}</h3>
-                    <p style="margin: 5px 0; font-size: 13px; color: #475569;"><b>🏢 Perusahaan:</b> {mhs['Perusahaan']}</p>
-                    <p style="margin: 5px 0; font-size: 13px; color: #475569;"><b>🎓 Prodi:</b> {mhs['Program Studi']}</p>
-                    <p style="margin: 5px 0 15px 0; font-size: 13px; color: #475569;"><b>📍 Domisili:</b> {mhs['Asal Domisili']}</p>
-                    <hr style="margin: 10px 0; border: 0; border-top: 1px solid #E2E8F0;">
+                    <h3 style="margin: 0; font-size: 18px;">{mhs['Nama']}</h3>
+                    <p style="margin: 5px 0; font-size: 13px;"><b>🏢 Perusahaan:</b> {mhs['Perusahaan']}</p>
+                    <p style="margin: 5px 0; font-size: 13px;"><b>🎓 Prodi:</b> {mhs['Program Studi']}</p>
+                    <p style="margin: 5px 0 15px 0; font-size: 13px;"><b>📍 Domisili:</b> {mhs['Asal Domisili']}</p>
+                    <hr style="margin: 10px 0; border: 0; border-top: 1px solid rgba(128,128,128,0.2);">
             """, unsafe_allow_html=True)
             
-            # Revisi 1: Tampilan logbook disederhanakan menggunakan badge/ikon bersih
             st.markdown('<div class="progress-section-title">1. Logbook</div>', unsafe_allow_html=True)
             logbook_items = mhs.get('Logbook', [])
             if logbook_items:
@@ -313,25 +308,23 @@ elif menu == "Daftar Mahasiswa OJT":
                     status = l.get("Status", "Belum")
                     icon = "✅" if status == "Selesai" else "⭕"
                     log_text += f"• {minggu}: {icon} {status}<br>"
-                st.markdown(f"<div style='font-size: 13px; color: #334155;'>{log_text}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 13px;'>{log_text}</div>", unsafe_allow_html=True)
             else:
                 st.caption("Belum ada data logbook.")
             
-            # Revisi 1: Tampilan laporan akhir OJT disederhanakan
             st.markdown('<div class="progress-section-title">2. Laporan Akhir OJT</div>', unsafe_allow_html=True)
             laporan_items = mhs.get('Laporan', [])
             if laporan_items:
                 lap_text = ""
                 for lp in laporan_items:
                     lap_text += f"• {lp.get('Bab/Progres', '')}<br>"
-                st.markdown(f"<div style='font-size: 13px; color: #334155;'>{lap_text}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 13px;'>{lap_text}</div>", unsafe_allow_html=True)
             else:
                 st.caption("Belum ada data laporan.")
             
-            # Revisi 1: Tampilan topik tugas akhir disederhanakan
             st.markdown('<div class="progress-section-title">3. Tugas Akhir</div>', unsafe_allow_html=True)
             tugas_akhir_text = mhs.get('TugasAkhir', '-')
-            st.markdown(f"<div style='font-size: 13px; color: #334155; white-space: pre-wrap;'>{tugas_akhir_text}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size: 13px; white-space: pre-wrap;'>{tugas_akhir_text}</div>", unsafe_allow_html=True)
             
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -514,7 +507,7 @@ elif menu == "Dokumentasi Kegiatan":
                         st.session_state['album_data'][kegiatan] = []
                     st.session_state['album_data'][kegiatan].append(f"data:{f.type};base64,{encoded}")
                 st.success(f"{len(uploaded_files)} foto berhasil diunggah!")
-                st.rerun()
+                st.reron() if hasattr(st, 'rerun') else st.experimental_rerun()
 
         photos = st.session_state['album_data'].get(kegiatan, [])
         if photos:
